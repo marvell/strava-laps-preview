@@ -13,12 +13,15 @@ import (
 	"time"
 )
 
-func NewClient(token string, opts ...Option) (*Client, error) {
+func NewClient(clientId, clientSecret, refreshToken string, opts ...Option) (*Client, error) {
 	c := &Client{
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		token: token,
+
+		clientId:     clientId,
+		clientSecret: clientSecret,
+		refreshToken: refreshToken,
 	}
 
 	for _, o := range opts {
@@ -32,8 +35,15 @@ func NewClient(token string, opts ...Option) (*Client, error) {
 
 type Client struct {
 	httpClient *http.Client
-	token      string
-	debugMode  bool
+
+	clientId     string
+	clientSecret string
+	refreshToken string
+	accessToken  string
+
+	lastUnauthorizedRequest time.Time
+
+	debugMode bool
 }
 
 func (c *Client) makeRequest(method, path string, body io.Reader) (*http.Request, error) {
@@ -42,16 +52,21 @@ func (c *Client) makeRequest(method, path string, body io.Reader) (*http.Request
 	u.Host = "www.strava.com"
 	u.Path = "/api/v3" + u.Path
 
-	return http.NewRequest(method, u.String(), body)
+	req, err := http.NewRequest(method, u.String(), body)
+	if err != nil {
+		return nil, fmt.Errorf("http.NewRequest: %w", err)
+	}
+
+	return req, nil
 }
 
 func (c *Client) call(req *http.Request) ([]byte, error) {
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
+
 	if c.debugMode {
 		reqDump, _ := httputil.DumpRequestOut(req, true)
 		log.Printf("REQ: %s", reqDump)
 	}
-
-	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -61,6 +76,20 @@ func (c *Client) call(req *http.Request) ([]byte, error) {
 	if c.debugMode {
 		resDump, _ := httputil.DumpResponse(res, true)
 		log.Printf("RES: %s", resDump)
+	}
+
+	if res.StatusCode == http.StatusUnauthorized {
+		if !c.lastUnauthorizedRequest.IsZero() {
+			return nil, fmt.Errorf("unauthorized request received again, check refresh token")
+		}
+		c.lastUnauthorizedRequest = time.Now()
+
+		log.Print("updating access token")
+		if err := c.RefreshToken(); err != nil {
+			return nil, fmt.Errorf("c.RefreshToken: %w", err)
+		}
+
+		return c.call(req)
 	}
 
 	defer res.Body.Close()

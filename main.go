@@ -10,27 +10,41 @@ import (
 )
 
 var (
-	flagSocks5Addr       string
-	flagSocks5User       string
-	flagSocks5Pass       string
-	flagStravaApiToken   string
+	flagSocks5Addr string
+	flagSocks5User string
+	flagSocks5Pass string
+
+	flagStravaApiClientId     string
+	flagStravaApiClientSecret string
+	flagStravaApiRefreshToken string
+
 	flagStravaActivityId int
-	flagDebugMode        bool
+
+	flagDebugMode bool
 )
 
 func init() {
 	flag.StringVar(&flagSocks5Addr, "socks5-addr", "", "Socks5 address")
 	flag.StringVar(&flagSocks5User, "socks5-user", "", "Socks5 user")
 	flag.StringVar(&flagSocks5Pass, "socks5-pass", "", "Socks5 password")
-	flag.StringVar(&flagStravaApiToken, "token", "", "Strava API token")
+
+	flag.StringVar(&flagStravaApiClientId, "client-id", "", "Strava API client ID")
+	flag.StringVar(&flagStravaApiClientSecret, "client-secret", "", "Strava API client secret")
+	flag.StringVar(&flagStravaApiRefreshToken, "refresh-token", "", "Strava API refresh token")
+
 	flag.IntVar(&flagStravaActivityId, "activity-id", 0, "Strava activity ID")
+
 	flag.BoolVar(&flagDebugMode, "debug", false, "Debug mode")
 }
 
 func main() {
 	flag.Parse()
 
-	c, err := strava.NewClient(flagStravaApiToken,
+	if flagStravaActivityId == 0 {
+		log.Fatal("invalid activity id")
+	}
+
+	c, err := strava.NewClient(flagStravaApiClientId, flagStravaApiClientSecret, flagStravaApiRefreshToken,
 		strava.WithSocks5(flagSocks5Addr, flagSocks5User, flagSocks5Pass),
 		strava.WithDebugMode(flagDebugMode))
 	if err != nil {
