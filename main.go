@@ -53,7 +53,7 @@ func main() {
 
 	var lastActivityId int
 
-	for range FirstTicker(time.Minute) {
+	for range FirstTicker(15 * time.Minute) {
 		log.Print("get activity list")
 		activities, err := c.GetAthleteActivities(10)
 		if err != nil {
