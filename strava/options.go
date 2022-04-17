@@ -9,9 +9,9 @@ import (
 
 type Option func(*Client) error
 
-func WithDebugMode(enabled bool) Option {
+func WithDebugMode() Option {
 	return func(c *Client) error {
-		c.debugMode = enabled
+		c.debugMode = true
 		return nil
 	}
 }

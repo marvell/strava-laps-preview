@@ -38,14 +38,20 @@ func init() {
 func main() {
 	flag.Parse()
 
-	c, err := strava.NewClient(flagStravaApiClientId, flagStravaApiClientSecret, flagStravaApiRefreshToken,
-		strava.WithSocks5(flagSocks5Addr, flagSocks5User, flagSocks5Pass),
-		strava.WithDebugMode(flagDebugMode))
+	var opts []strava.Option
+	if flagSocks5Addr != "" {
+		opts = append(opts, strava.WithSocks5(flagSocks5Addr, flagSocks5User, flagSocks5Pass))
+	}
+	if flagDebugMode {
+		opts = append(opts, strava.WithDebugMode())
+	}
+
+	c, err := strava.NewClient(flagStravaApiClientId, flagStravaApiClientSecret, flagStravaApiRefreshToken, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var lastActivityId int = 6970299350
+	var lastActivityId int
 
 	for range FirstTicker(time.Minute) {
 		log.Print("get activity list")
