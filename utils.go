@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 func FormatDistance(d float64) string {
@@ -39,4 +40,19 @@ func FormatDuration(secs int) string {
 
 func ConvertSpeedToPace(s float64) int {
 	return int(math.Round(1000 / s))
+}
+
+func FirstTicker(d time.Duration) <-chan time.Time {
+	ch := make(chan time.Time, 1)
+	ch <- time.Now()
+
+	ticker := time.NewTicker(d)
+
+	go func() {
+		for t := range ticker.C {
+			ch <- t
+		}
+	}()
+
+	return ch
 }
