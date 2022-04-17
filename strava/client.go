@@ -3,10 +3,13 @@ package strava
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -30,26 +33,34 @@ func NewClient(token string, opts ...Option) (*Client, error) {
 type Client struct {
 	httpClient *http.Client
 	token      string
+	debugMode  bool
 }
 
-func (c *Client) makeUrl(path string) url.URL {
+func (c *Client) makeRequest(method, path string, body io.Reader) (*http.Request, error) {
 	u, _ := url.Parse(path)
 	u.Scheme = "https"
 	u.Host = "www.strava.com"
 	u.Path = "/api/v3" + u.Path
 
-	return *u
+	return http.NewRequest(method, u.String(), body)
 }
 
-func (c *Client) call(u url.URL) ([]byte, error) {
-	log.Printf("URL: %s", u.String())
+func (c *Client) call(req *http.Request) ([]byte, error) {
+	if c.debugMode {
+		reqDump, _ := httputil.DumpRequestOut(req, true)
+		log.Printf("REQ: %s", reqDump)
+	}
 
-	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("c.httpClient.Get: %w", err)
+	}
+
+	if c.debugMode {
+		resDump, _ := httputil.DumpResponse(res, true)
+		log.Printf("RES: %s", resDump)
 	}
 
 	defer res.Body.Close()
@@ -66,7 +77,12 @@ func (c *Client) call(u url.URL) ([]byte, error) {
 }
 
 func (c *Client) GetAthleteActivities(limit int) ([]Activity, error) {
-	b, err := c.call(c.makeUrl(fmt.Sprintf("/athlete/activities?per_page=%d", limit)))
+	req, err := c.makeRequest(http.MethodGet, fmt.Sprintf("/athlete/activities?per_page=%d", limit), nil)
+	if err != nil {
+		return nil, fmt.Errorf("c.makeRequest: %w", err)
+	}
+
+	b, err := c.call(req)
 	if err != nil {
 		return nil, fmt.Errorf("c.call: %w", err)
 	}
@@ -81,7 +97,12 @@ func (c *Client) GetAthleteActivities(limit int) ([]Activity, error) {
 }
 
 func (c *Client) GetActivityLaps(id int) ([]Lap, error) {
-	b, err := c.call(c.makeUrl(fmt.Sprintf("/activities/%d/laps", id)))
+	req, err := c.makeRequest(http.MethodGet, fmt.Sprintf("/activities/%d/laps", id), nil)
+	if err != nil {
+		return nil, fmt.Errorf("c.makeRequest: %w", err)
+	}
+
+	b, err := c.call(req)
 	if err != nil {
 		return nil, fmt.Errorf("c.call: %w", err)
 	}
@@ -93,4 +114,21 @@ func (c *Client) GetActivityLaps(id int) ([]Lap, error) {
 	}
 
 	return v, nil
+}
+
+func (c *Client) UpdateActivityDescription(id int, desc string) error {
+	reqBody := strings.NewReader(url.Values{"description": []string{desc}}.Encode())
+	req, err := c.makeRequest(http.MethodPut, fmt.Sprintf("/activities/%d", id), reqBody)
+	if err != nil {
+		return fmt.Errorf("c.makeRequest: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	_, err = c.call(req)
+	if err != nil {
+		return fmt.Errorf("c.call: %w", err)
+	}
+
+	return nil
 }
