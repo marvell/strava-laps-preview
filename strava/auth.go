@@ -3,6 +3,7 @@ package strava
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,6 +18,8 @@ type stravaOauthTokenResponse struct {
 }
 
 func (c *Client) RefreshToken() error {
+	log.Print("updating access token")
+
 	reqData := url.Values{
 		"client_id":     []string{c.clientId},
 		"client_secret": []string{c.clientSecret},
@@ -32,7 +35,7 @@ func (c *Client) RefreshToken() error {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resBody, err := c.call(req)
+	resBody, err := c.call(req, false)
 	if err != nil {
 		return fmt.Errorf("c.call: %w", err)
 	}

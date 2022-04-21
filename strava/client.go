@@ -60,7 +60,7 @@ func (c *Client) makeRequest(method, path string, body io.Reader) (*http.Request
 	return req, nil
 }
 
-func (c *Client) call(req *http.Request) ([]byte, error) {
+func (c *Client) call(req *http.Request, retry bool) ([]byte, error) {
 	req.Header.Set("Authorization", "Bearer "+c.accessToken)
 
 	if c.debugMode {
@@ -78,18 +78,12 @@ func (c *Client) call(req *http.Request) ([]byte, error) {
 		log.Printf("RES: %s", resDump)
 	}
 
-	if res.StatusCode == http.StatusUnauthorized {
-		if !c.lastUnauthorizedRequest.IsZero() {
-			return nil, fmt.Errorf("unauthorized request received again, check refresh token")
-		}
-		c.lastUnauthorizedRequest = time.Now()
-
-		log.Print("updating access token")
+	if retry && res.StatusCode == http.StatusUnauthorized {
 		if err := c.RefreshToken(); err != nil {
 			return nil, fmt.Errorf("c.RefreshToken: %w", err)
 		}
 
-		return c.call(req)
+		return c.call(req, false)
 	}
 
 	defer res.Body.Close()
@@ -111,7 +105,7 @@ func (c *Client) GetAthleteActivities(limit int) ([]Activity, error) {
 		return nil, fmt.Errorf("c.makeRequest: %w", err)
 	}
 
-	b, err := c.call(req)
+	b, err := c.call(req, true)
 	if err != nil {
 		return nil, fmt.Errorf("c.call: %w", err)
 	}
@@ -131,7 +125,7 @@ func (c *Client) GetActivityLaps(id int) ([]Lap, error) {
 		return nil, fmt.Errorf("c.makeRequest: %w", err)
 	}
 
-	b, err := c.call(req)
+	b, err := c.call(req, true)
 	if err != nil {
 		return nil, fmt.Errorf("c.call: %w", err)
 	}
@@ -154,7 +148,7 @@ func (c *Client) UpdateActivityDescription(id int, desc string) error {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	_, err = c.call(req)
+	_, err = c.call(req, true)
 	if err != nil {
 		return fmt.Errorf("c.call: %w", err)
 	}
