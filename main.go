@@ -16,9 +16,10 @@ var (
 	flagSocks5User string
 	flagSocks5Pass string
 
-	flagStravaApiClientId     string
-	flagStravaApiClientSecret string
-	flagStravaApiRefreshToken string
+	flagStravaApiClientId         string
+	flagStravaApiClientSecret     string
+	flagStravaApiRefreshToken     string
+	flagStravaStartFromActivityId int
 
 	flagDebugMode bool
 )
@@ -31,6 +32,7 @@ func init() {
 	flag.StringVar(&flagStravaApiClientId, "client-id", "", "Strava API client ID")
 	flag.StringVar(&flagStravaApiClientSecret, "client-secret", "", "Strava API client secret")
 	flag.StringVar(&flagStravaApiRefreshToken, "refresh-token", "", "Strava API refresh token")
+	flag.IntVar(&flagStravaStartFromActivityId, "start-from-id", 0, "Strava activity ID start from")
 
 	flag.BoolVar(&flagDebugMode, "debug", false, "Debug mode")
 }
@@ -51,7 +53,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var lastActivityId int
+	var lastActivityId = flagStravaStartFromActivityId
 
 	for range FirstTicker(15 * time.Minute) {
 		log.Print("get activity list")
