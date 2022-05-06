@@ -2,11 +2,19 @@ package strava
 
 import "time"
 
+type ActivityType string
+
+var (
+	ActivityTypeRide ActivityType = "Ride"
+	ActivityTypeRun  ActivityType = "Run"
+)
+
 type Activity struct {
-	Id        int       `json:"id"`
-	Name      string    `json:"name"`
-	StartDate time.Time `json:"start_date"`
-	Distance  float64   `json:"distance"`
+	Id        int          `json:"id"`
+	Name      string       `json:"name"`
+	Type      ActivityType `json:"type"`
+	StartDate time.Time    `json:"start_date"`
+	Distance  float64      `json:"distance"`
 }
 
 type Lap struct {

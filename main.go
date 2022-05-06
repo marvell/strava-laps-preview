@@ -12,6 +12,11 @@ import (
 )
 
 var (
+	interval = 5 * time.Minute
+	limit    = 10
+)
+
+var (
 	flagSocks5Addr string
 	flagSocks5User string
 	flagSocks5Pass string
@@ -55,9 +60,9 @@ func main() {
 
 	var lastActivityId = flagStravaStartFromActivityId
 
-	for range FirstTicker(15 * time.Minute) {
+	for range FirstTicker(interval) {
 		log.Print("get activity list")
-		activities, err := c.GetAthleteActivities(10)
+		activities, err := c.GetAthleteActivities(limit)
 		if err != nil {
 			log.Fatalf("c.GetAthleteActivities: %#v", err)
 		}
@@ -76,6 +81,11 @@ func main() {
 		}
 
 		for _, a := range activities {
+			if a.Type != strava.ActivityTypeRun {
+				log.Printf("%d has unsuitable type: %q, skip", a.Id, a.Type)
+				continue
+			}
+
 			if a.Id <= lastActivityId {
 				continue
 			}
@@ -85,6 +95,8 @@ func main() {
 
 			lastActivityId = a.Id
 		}
+
+		log.Printf("wait for %s", interval)
 	}
 }
 
@@ -104,7 +116,8 @@ func updateActivity(id int, c *strava.Client) {
 		avgPace := ConvertSpeedToPace(l.AverageSpeed)
 		avgHr := int(math.Round(l.AverageHeartrate))
 
-		desc += fmt.Sprintf("%d) %s / %s / %s / %d\n", i+1, FormatDistance(l.Distance), FormatDuration(l.MovingTime), FormatDuration(avgPace), avgHr)
+		desc += fmt.Sprintf("%s %d) %s / %s / %s / %d\n", speedEmoji(l.AverageSpeed), i+1, FormatDistance(l.Distance),
+			FormatDuration(l.MovingTime), FormatDuration(avgPace), avgHr)
 	}
 
 	err = c.UpdateActivityDescription(id, desc)
@@ -113,4 +126,27 @@ func updateActivity(id int, c *strava.Client) {
 	}
 
 	log.Printf("[%d] has updated", id)
+}
+
+var speedToEmoji = []struct {
+	maxSpeed float64
+	emoji    string
+}{
+	{10.344828, "🟣"}, // 5:48
+	{11.076923, "🔵"}, // 5:25
+	{11.881188, "🟢"}, // 5:03 - Threshold
+	{12.811388, "🟡"}, // 4:41
+	{13.953488, "🟠"}, // 4:18
+	{30.0, "🔴"},
+}
+
+func speedEmoji(speed float64) string {
+	speed = speed * 3.6
+
+	for _, s := range speedToEmoji {
+		if speed <= s.maxSpeed {
+			return s.emoji
+		}
+	}
+	return speedToEmoji[len(speedToEmoji)-1].emoji
 }

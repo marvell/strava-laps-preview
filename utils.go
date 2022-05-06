@@ -7,20 +7,20 @@ import (
 )
 
 func FormatDistance(d float64) string {
-	m := int(math.Round(d))
+	d = math.Round(d/10) * 10
 
-	if m >= 1000 {
-		m = int(m/10) * 10 // round to 10
+	if d >= 1000 {
+		m := d / 1000
 
-		if m%1000 == 0 {
-			return fmt.Sprintf("%.0fkm", d/1000)
+		if int(d)%1000 == 0 {
+			return fmt.Sprintf("%.0fkm", m)
 		}
 
-		if m%100 != 0 {
-			return fmt.Sprintf("%.2fkm", d/1000)
+		if int(d)%100 == 0 {
+			return fmt.Sprintf("%.1fkm", m)
 		}
 
-		return fmt.Sprintf("%.1fkm", d/1000)
+		return fmt.Sprintf("%.2fkm", m)
 	}
 
 	return fmt.Sprintf("%.0fm", d)
@@ -55,4 +55,8 @@ func FirstTicker(d time.Duration) <-chan time.Time {
 	}()
 
 	return ch
+}
+
+func PaceToSpeed(pace time.Duration) float64 {
+	return 3600. / pace.Seconds()
 }
