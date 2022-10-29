@@ -2,9 +2,7 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.231.6/containers/go
 {
 	"name": "strava-laps-preview",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
+	"image": "mcr.microsoft.com/vscode/devcontainers/go:0-1.19-bullseye",
 	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
 
 	// Set *default* container specific settings.json values on container create.

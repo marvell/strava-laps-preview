@@ -79,9 +79,12 @@ func (c *Client) call(req *http.Request, retry bool) ([]byte, error) {
 	}
 
 	if retry && res.StatusCode == http.StatusUnauthorized {
-		if err := c.RefreshToken(); err != nil {
-			return nil, fmt.Errorf("c.RefreshToken: %w", err)
+		accessToken, err := c.AccessToken()
+		if err != nil {
+			return nil, fmt.Errorf("c.AccessToken: %w", err)
 		}
+
+		c.accessToken = accessToken
 
 		return c.call(req, false)
 	}
@@ -154,4 +157,8 @@ func (c *Client) UpdateActivityDescription(id int, desc string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) SetRefreshToken(token string) {
+	c.refreshToken = token
 }

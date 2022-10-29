@@ -26,6 +26,8 @@ var (
 	flagStravaApiRefreshToken     string
 	flagStravaStartFromActivityId int
 
+	flagStravaOAuth bool
+
 	flagDebugMode bool
 )
 
@@ -38,6 +40,8 @@ func init() {
 	flag.StringVar(&flagStravaApiClientSecret, "client-secret", "", "Strava API client secret")
 	flag.StringVar(&flagStravaApiRefreshToken, "refresh-token", "", "Strava API refresh token")
 	flag.IntVar(&flagStravaStartFromActivityId, "start-from-id", 0, "Strava activity ID start from")
+
+	flag.BoolVar(&flagStravaOAuth, "auth", false, "Strava OAuth")
 
 	flag.BoolVar(&flagDebugMode, "debug", false, "Debug mode")
 }
@@ -56,6 +60,29 @@ func main() {
 	c, err := strava.NewClient(flagStravaApiClientId, flagStravaApiClientSecret, flagStravaApiRefreshToken, opts...)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if flagStravaApiRefreshToken == "" {
+		authorizeUrl, err := c.AuthorizeUrl()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("Authorize URL: %s\nCode: ", authorizeUrl.String())
+
+		var code string
+		_, err = fmt.Scanln(&code)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		refreshToken, err := c.RefreshToken(code)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("Refresh token: %s\n", refreshToken)
+		c.SetRefreshToken(refreshToken)
 	}
 
 	var lastActivityId = flagStravaStartFromActivityId
@@ -132,12 +159,12 @@ var speedToEmoji = []struct {
 	maxSpeed float64
 	emoji    string
 }{
-	{10.344828, "🟣"}, // 5:48
-	{11.076923, "🔵"}, // 5:25
-	{11.881188, "🟢"}, // 5:03 - Threshold
-	{12.811388, "🟡"}, // 4:41
-	{13.953488, "🟠"}, // 4:18
-	{30.0, "🔴"},
+	{10.59, "🟣"}, // 5:40
+	{11.96, "🔵"}, // 5:01
+	{13.00, "🟢"}, // 4:37 - Threshold
+	{14.81, "🟡"}, // 4:03
+	{16.36, "🟠"}, // 3:40
+	{30.00, "🔴"},
 }
 
 func speedEmoji(speed float64) string {
